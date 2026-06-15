@@ -55,13 +55,21 @@ def planner_node(state: TravelState):
     - Nếu yêu cầu mới nhất chỉ là đổi khách sạn hoặc quán ăn mà không nhắc gì đến việc thay đổi số ngày, BẮT BUỘC giữ nguyên {current_days} ngày như lịch trình cũ.
     - Tuyệt đối không để số ngày bị mắc kẹt. Phải đảm bảo mảng `days` bạn trả ra có độ dài khớp với phép toán trên.
     
-    LUẬT QUAN TRỌNG VỀ REFINE:
+    LUẬT QUAN TRỌNG VỀ REFINE VÀ LÊN LỊCH TRÌNH:
     1. Nếu intent là 'refine_hotel': BẠN PHẢI GIỮ NGUYÊN 100% phần `itinerary` (lịch trình) cũ, CHỈ chọn lại `hotel` mới từ Context. (Nếu có thay đổi số ngày thì cập nhật lại `nights` cho hotel).
     2. Nếu intent là 'refine_activities': BẠN PHẢI GIỮ NGUYÊN 100% phần `hotel` cũ, CHỈ cập nhật lại `itinerary` (thêm bớt địa điểm, thay đổi ngày) từ Context.
     3. Nếu intent là 'create' hoặc 'refine_all': Xếp lịch trình và chọn khách sạn hoàn toàn mới. Tối ưu Route: Gom các địa điểm có tọa độ gần nhau vào cùng 1 ngày.
-    4. BẮT BUỘC: Mỗi ngày trong lịch trình phải có tối thiểu 3 hoạt động được gán nhãn Ăn uống (Ăn sáng, Ăn trưa, Ăn tối).
+    4. BẮT BUỘC VỀ CẤU TRÚC MỖI NGÀY:
+       - Mỗi ngày có 4-6 hoạt động, bao gồm các bữa ăn và tham quan.
+       - Mỗi ngày cần có đủ các thành phần theo thứ tự:
+         * Buổi sáng (Morning): 1 bữa ăn sáng (Breakfast) -> 1 điểm tham quan (Attraction).
+         * Buổi trưa (Lunch): 1 bữa ăn trưa (Lunch).
+         * Buổi chiều (Afternoon): 1 điểm tham quan (Attraction) hoặc Quán Cafe/Trải nghiệm địa phương.
+         * Buổi tối (Evening): 1 bữa ăn tối (Dinner) -> Hoạt động về đêm (nếu phù hợp).
+       - Đối với tất cả các bữa ăn (Sáng, Trưa, Tối), BẠN BẮT BUỘC PHẢI CHỌN MỘT NHÀ HÀNG / QUÁN ĂN CỤ THỂ từ Context (không được để chung chung).
+       - Không dùng lại cùng một địa điểm trong nhiều ngày (trừ khách sạn).
     
-    CHỈ SỬ DỤNG DỮ LIỆU TỪ CONTEXT VÀ DỮ LIỆU CŨ. KHÔNG BỊA ĐỊA ĐIỂM.
+    CHỈ SỬ DỤNG DỮ LIỆU TỪ CONTEXT VÀ DỮ LIỆU CŨ. KHÔNG BỊA ĐỊA ĐIỂM. KHÔNG BỊA NHÀ HÀNG.
     
     TRẢ VỀ ĐÚNG ĐỊNH DẠNG JSON SAU (NẰM TRONG BLOCK ```json ... ```):
     {{
@@ -79,12 +87,20 @@ def planner_node(state: TravelState):
                     "day": 1,
                     "activities": [
                         {{
-                            "time": "Sáng", 
-                            "place": "Tên địa điểm", 
-                            "description": "Làm gì", 
-                            "price": 100000,
+                            "time": "08:00", 
+                            "place": "Tên nhà hàng ăn sáng", 
+                            "description": "Ăn sáng đặc sản", 
+                            "price": 50000,
                             "lat": 16.123,
                             "lng": 108.123
+                        }},
+                        {{
+                            "time": "09:30", 
+                            "place": "Tên điểm tham quan", 
+                            "description": "Tham quan ngắm cảnh", 
+                            "price": 100000,
+                            "lat": 16.130,
+                            "lng": 108.140
                         }}
                     ]
                 }}
