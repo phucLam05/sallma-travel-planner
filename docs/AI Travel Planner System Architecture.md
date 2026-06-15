@@ -120,7 +120,7 @@ Các tính năng sau không thuộc MVP:
 
 14. Cá nhân hóa dài hạn theo lịch sử user.
 
-Các tính năng này có thể đưa vào phase 2 hoặc phase 3\.
+Các tính năng này có thể đưa vào các phiên bản cập nhật tương lai.
 
 ---
 

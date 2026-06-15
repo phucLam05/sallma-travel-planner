@@ -14,7 +14,7 @@ def route_intent(state: TravelState):
     Nếu tạo mới hoặc thay đổi lớn -> Research lại.
     Nếu chỉ refine nhỏ (với context đã có đủ data) thì có thể chỉ chạy Planner, 
     nhưng để đơn giản và an toàn nhất cho hybrid search, ta chạy Research -> Planner cho mọi refine 
-    trừ phi bạn muốn tối ưu cực sâu (chưa cần ở Phase này).
+    trừ phi bạn muốn tối ưu cực sâu.
     Tạm thời: Workflow -> Research -> Planner -> Budget.
     """
     return "research"

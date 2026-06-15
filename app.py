@@ -55,7 +55,7 @@ for sess in sessions:
         st.rerun()
 
 # Tiêu đề ứng dụng
-st.title("✈️ SALLMA Travel Planner (Phase 2 - Enterprise Memory)")
+st.title("✈️ SALLMA Travel Planner")
 st.markdown("Hệ thống lên kế hoạch du lịch chuẩn SALLMA với Persistent Memory (PostgreSQL) và Multi-Agent.")
 
 # Khởi tạo session_id và state mặc định nếu chưa có

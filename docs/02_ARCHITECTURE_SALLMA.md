@@ -1,4 +1,4 @@
-# Kiến trúc Hệ thống SALLMA V2 (Operational Layer)
+# Kiến trúc Hệ thống SALLMA (Operational Layer)
 
 SALLMA (State-Aware Large Language Model Architecture) là kiến trúc xoay quanh một bộ nhớ dùng chung duy nhất để giữ tính nhất quán tuyệt đối giữa các tiến trình suy luận.
 
