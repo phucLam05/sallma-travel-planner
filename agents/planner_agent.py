@@ -122,7 +122,12 @@ def planner_node(state: TravelState):
         hotel_data = data.get("hotel", {})
         itinerary_data = data.get("itinerary", {})
         
-        logger.info("Đã tạo Plan thành công.")
+        # Ép buộc logic: Số đêm = Số ngày - 1
+        num_days = len(itinerary_data.get("days", []))
+        if num_days > 0:
+            hotel_data["nights"] = max(1, num_days - 1)
+        
+        logger.info(f"Đã tạo Plan thành công. Số ngày: {num_days}, Số đêm: {hotel_data.get('nights')}")
         return {
             "accommodation_details": hotel_data,
             "itinerary_plan": itinerary_data
