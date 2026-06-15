@@ -215,13 +215,13 @@ with col_result:
         st.divider()
         
         # 4. Hiển thị Bảng tính tiền
-        if budget and "overall_total" in budget:
+        if budget and "total_cost" in budget:
             st.subheader("💰 Bảng Dự Toán Chi Phí")
             c1, c2 = st.columns(2)
-            c1.metric("🏨 Khách sạn", f"{budget.get('hotel_total', 0):,} VNĐ")
-            c2.metric("🎫 Tham quan & Ăn uống", f"{budget.get('ticket_costs', 0):,} VNĐ")
+            c1.metric("🏨 Khách sạn", f"{budget.get('hotel_total_cost', 0):,} VNĐ")
+            c2.metric("🎫 Tham quan & Ăn uống", f"{budget.get('activities_cost', 0):,} VNĐ")
             
-            st.metric("💵 TỔNG CỘNG", f"{budget.get('overall_total', 0):,} VNĐ")
+            st.metric("💵 TỔNG CỘNG", f"{budget.get('total_cost', 0):,} VNĐ")
 
 
 # Xử lý khi người dùng ấn nút Gửi

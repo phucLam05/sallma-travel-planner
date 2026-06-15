@@ -67,7 +67,11 @@ def research_node(state: TravelState):
     logger.debug("Gọi LLM để research dữ liệu...")
     response = llm_with_tools.invoke(messages)
     
-    while response.tool_calls:
+    MAX_ITERATIONS = 5
+    iteration_count = 0
+    
+    while response.tool_calls and iteration_count < MAX_ITERATIONS:
+        iteration_count += 1
         # Quan trọng: Chỉ append AIMessage chứa tool_calls MỘT LẦN duy nhất
         messages.append(response)
         
@@ -76,7 +80,6 @@ def research_node(state: TravelState):
             
             try:
                 # Cách chuẩn nhất của Langchain với OpenAI: truyền toàn bộ dict tool_call vào invoke
-                # Nó sẽ tự động thực thi và trả về một ToolMessage hợp lệ 100%
                 if tool_call['name'] == 'retrieve_places':
                     tool_msg = retrieve_places.invoke(tool_call)
                     messages.append(tool_msg)
@@ -88,8 +91,15 @@ def research_node(state: TravelState):
                 from langchain_core.messages import ToolMessage
                 messages.append(ToolMessage(content=f"Error: {e}", tool_call_id=tool_call['id'], name=tool_call['name']))
         
-        # Gửi lại toàn bộ lịch sử (bao gồm AIMessage chứa tool_calls và các ToolMessage kết quả) cho LLM
-        response = llm_with_tools.invoke(messages)
+        if iteration_count >= MAX_ITERATIONS:
+            logger.warning(f"Research Agent đã đạt giới hạn {MAX_ITERATIONS} vòng lặp. Ép buộc xuất JSON.")
+            messages.append(SystemMessage(content="Bạn đã đạt giới hạn số lần tìm kiếm. KHÔNG GỌI THÊM TOOL NÀO NỮA. Dựa trên dữ liệu hiện tại, hãy lập tức trả về kết quả theo định dạng JSON như đã yêu cầu. Nếu thiếu dữ liệu, hãy điền danh sách rỗng [] cho hạng mục đó."))
+            # Gọi llm GỐC (không bind tools) để ngăn chặn nó gọi tool tiếp
+            response = llm.invoke(messages)
+            break
+        else:
+            # Tiếp tục vòng lặp bình thường
+            response = llm_with_tools.invoke(messages)
     
     content = response.content
     if isinstance(content, list):
