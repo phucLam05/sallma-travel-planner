@@ -9,8 +9,13 @@ load_dotenv()
 
 from core.graph import build_graph
 from core.state import TravelState
+from core.database import DatabaseManager
+import uuid
 
 st.set_page_config(page_title="SALLMA Travel Planner", layout="wide")
+
+# Khởi tạo bảng travel_sessions
+DatabaseManager.init_session_table()
 
 # Hàm khởi tạo LangGraph
 @st.cache_resource
@@ -19,11 +24,44 @@ def get_travel_graph():
 
 graph = get_travel_graph()
 
-# Tiêu đề ứng dụng
-st.title("✈️ SALLMA Travel Planner (Phase 2 - UI Route)")
-st.markdown("Hệ thống lên kế hoạch du lịch sử dụng kiến trúc Multi-Agent đồng bộ với JSON, vẽ Route Bản đồ.")
+# Xử lý Sidebar cho Session Management
+st.sidebar.title("🗂️ Quản lý Phiên (Sessions)")
 
-# Khởi tạo state trong Streamlit
+if st.sidebar.button("➕ Tạo Chat Mới"):
+    st.session_state.session_id = str(uuid.uuid4())
+    st.session_state.travel_state = TravelState(
+        chat_history=[],
+        latest_user_input="",
+        intent="",
+        research_context={},
+        itinerary_plan={},
+        accommodation_details={},
+        budget_details={}
+    )
+    st.rerun()
+
+sessions = DatabaseManager.get_all_sessions()
+st.sidebar.markdown("---")
+st.sidebar.subheader("Lịch sử Chat")
+for sess in sessions:
+    # Lấy 8 ký tự đầu của session_id làm tên hiển thị
+    btn_label = f"📝 Session {sess['session_id'][:8]} ({sess['updated_at'].strftime('%H:%M %d/%m')})"
+    if st.sidebar.button(btn_label, key=sess['session_id']):
+        st.session_state.session_id = sess['session_id']
+        loaded_state = DatabaseManager.load_session(sess['session_id'])
+        if loaded_state:
+            # Gán lại state
+            st.session_state.travel_state = loaded_state
+        st.rerun()
+
+# Tiêu đề ứng dụng
+st.title("✈️ SALLMA Travel Planner (Phase 2 - Enterprise Memory)")
+st.markdown("Hệ thống lên kế hoạch du lịch chuẩn SALLMA với Persistent Memory (PostgreSQL) và Multi-Agent.")
+
+# Khởi tạo session_id và state mặc định nếu chưa có
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
 if "travel_state" not in st.session_state:
     st.session_state.travel_state = TravelState(
         chat_history=[],
@@ -219,8 +257,8 @@ if submit_button and user_input:
                         status.update(label="💰 Đang tính toán chi phí...")
                         st.write("✅ Đã hoàn tất bảng dự toán.")
                         
-                    # Cập nhật state nội bộ để giữ luồng
-                    st.session_state.travel_state = state_update
+                    # Cập nhật state nội bộ để giữ luồng (vì các node chỉ trả về key bị thay đổi)
+                    st.session_state.travel_state.update(state_update)
             
             status.update(label="Hoàn tất!", state="complete", expanded=False)
             
@@ -229,6 +267,12 @@ if submit_button and user_input:
                 "role": "System", 
                 "content": f"Đã hoàn thành yêu cầu. Intent: {st.session_state.travel_state.get('intent')}."
             })
+            
+            # LƯU STATE VÀO DATABASE ĐỂ PERSISTENCE
+            DatabaseManager.save_session(
+                session_id=st.session_state.session_id,
+                state_data=st.session_state.travel_state
+            )
             
             # Rerun để cập nhật UI
             st.rerun()

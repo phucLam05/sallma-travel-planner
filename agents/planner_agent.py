@@ -109,24 +109,27 @@ def planner_node(state: TravelState):
             for block in content
         )
     else:
-        final_text = str(content)
+        result_text = str(content)
         
     try:
-        match = re.search(r'```json\n(.*?)\n```', final_text, re.DOTALL)
-        if match:
-            json_str = match.group(1)
-        else:
-            json_str = final_text
-            
-        json_data = json.loads(json_str)
+        json_str = result_text
+        if "```json" in result_text:
+            json_str = result_text.split("```json")[1].split("```")[0]
+        elif "```" in result_text:
+            json_str = result_text.split("```")[1].split("```")[0]
         
-        state["accommodation_details"] = json_data.get("hotel", {})
-        state["itinerary_plan"] = json_data.get("itinerary", {})
+        data = json.loads(json_str)
+        hotel_data = data.get("hotel", {})
+        itinerary_data = data.get("itinerary", {})
         
-        logger.info("Planner Agent hoàn thành (JSON parsed).")
-    except Exception as e:
-        logger.error(f"Lỗi parse JSON Planner: {e}")
-        state["accommodation_details"] = {"error": "Lỗi Planner", "raw_output": final_text}
-        state["itinerary_plan"] = {"error": "Lỗi Planner", "raw_output": final_text}
-    
-    return state
+        logger.info("Đã tạo Plan thành công.")
+        return {
+            "accommodation_details": hotel_data,
+            "itinerary_plan": itinerary_data
+        }
+    except json.JSONDecodeError:
+        logger.error(f"Lỗi parse JSON từ LLM Planner. Output gốc:\n{result_text}")
+        return {
+            "accommodation_details": old_hotel,
+            "itinerary_plan": old_itinerary
+        }

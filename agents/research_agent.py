@@ -108,10 +108,8 @@ def research_node(state: TravelState):
             json_str = final_text
             
         json_data = json.loads(json_str)
-        state["research_context"] = json_data
         logger.info("Research Agent hoàn thành (JSON parsed).")
+        return {"research_context": json_data}
     except Exception as e:
         logger.error(f"Lỗi parse JSON Research: {e}")
-        state["research_context"] = {"error": "Không thể tổng hợp dữ liệu", "raw_output": final_text}
-    
-    return state
+        return {"research_context": {"error": "Không thể tổng hợp dữ liệu", "raw_output": final_text}}

@@ -15,30 +15,27 @@ def budget_node(state: TravelState):
     
     # 1. Chi phí khách sạn
     hotel_price = accommodation_details.get("price_per_night", 0)
+    hotel_price_per_night = accommodation_details.get("price_per_night", 0)
     nights = accommodation_details.get("nights", 2)
-    total_hotel = hotel_price * nights
+    hotel_total_cost = hotel_price_per_night * nights
     
     # 2. Chi phí vé tham quan & nhà hàng (Tính trực tiếp từ giá của từng activity)
-    ticket_costs = 0
-    days = itinerary_plan.get("days", [])
-    num_days = len(days) if days else (nights + 1)
-    
-    for day in days:
+    # Tính tổng tiền từ hoạt động
+    activities_cost = 0
+    for day in itinerary_plan.get("days", []):
         for act in day.get("activities", []):
-            ticket_costs += act.get("price", 0)
-    
-    # 3. Tổng cộng
-    total_overall = total_hotel + ticket_costs
+            activities_cost += act.get("price", 0)
+            
+    total_cost = hotel_total_cost + activities_cost
     
     budget_details = {
-        "hotel_total": total_hotel,
-        "ticket_costs": ticket_costs,
-        "num_days": num_days,
+        "hotel_cost_per_night": hotel_price_per_night,
         "nights": nights,
-        "overall_total": total_overall
+        "hotel_total_cost": hotel_total_cost,
+        "activities_cost": activities_cost,
+        "total_cost": total_cost,
+        "currency": "VND"
     }
     
-    state["budget_details"] = budget_details
-    logger.info("Budget Node tính toán xong chi phí.")
-    
-    return state
+    logger.info(f"Tổng chi phí dự tính: {total_cost:,} VND")
+    return {"budget_details": budget_details}

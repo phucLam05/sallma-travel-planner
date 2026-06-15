@@ -61,3 +61,73 @@ class DatabaseManager:
         except Exception as e:
             print(f"Database error: {e}")
             return []
+
+    @staticmethod
+    def init_session_table():
+        """Tạo bảng travel_sessions nếu chưa có."""
+        try:
+            conn = DatabaseManager.get_connection()
+            cur = conn.cursor()
+            cur.execute('''
+                CREATE TABLE IF NOT EXISTS travel_sessions (
+                    session_id VARCHAR(255) PRIMARY KEY,
+                    state_data JSONB NOT NULL,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            ''')
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Lỗi tạo bảng travel_sessions: {e}")
+
+    @staticmethod
+    def save_session(session_id: str, state_data: dict):
+        import json
+        try:
+            conn = DatabaseManager.get_connection()
+            cur = conn.cursor()
+            json_str = json.dumps(state_data, ensure_ascii=False)
+            
+            cur.execute('''
+                INSERT INTO travel_sessions (session_id, state_data, updated_at)
+                VALUES (%s, %s::jsonb, CURRENT_TIMESTAMP)
+                ON CONFLICT (session_id) 
+                DO UPDATE SET state_data = EXCLUDED.state_data, updated_at = CURRENT_TIMESTAMP;
+            ''', (session_id, json_str))
+            
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Lỗi save_session: {e}")
+
+    @staticmethod
+    def load_session(session_id: str) -> dict:
+        try:
+            conn = DatabaseManager.get_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT state_data FROM travel_sessions WHERE session_id = %s;', (session_id,))
+            row = cur.fetchone()
+            cur.close()
+            conn.close()
+            if row:
+                return row[0]
+            return None
+        except Exception as e:
+            print(f"Lỗi load_session: {e}")
+            return None
+
+    @staticmethod
+    def get_all_sessions() -> list:
+        try:
+            conn = DatabaseManager.get_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT session_id, updated_at FROM travel_sessions ORDER BY updated_at DESC;')
+            rows = cur.fetchall()
+            cur.close()
+            conn.close()
+            return [{"session_id": r[0], "updated_at": r[1]} for r in rows]
+        except Exception as e:
+            print(f"Lỗi get_all_sessions: {e}")
+            return []

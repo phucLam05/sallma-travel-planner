@@ -78,6 +78,5 @@ def workflow_node(state: TravelState):
         else:
             intent = 'create'
             
-    state["intent"] = intent
-    logger.info(f"Kết quả phân tích: Intent={state.get('intent')}")
-    return state
+    logger.info(f"Kết quả phân tích: Intent={intent}")
+    return {"intent": intent}
