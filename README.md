@@ -13,12 +13,17 @@ Dự án lên kế hoạch du lịch sử dụng kiến trúc **SALLMA (State-Aw
 - **Database (PostgreSQL + pgvector)**: Lưu trữ dữ liệu thực và Vector Embeddings (Google `gemini-embedding-2`).
 
 ## 📊 Benchmark Results
-Kết quả dưới đây được lấy trực tiếp từ full benchmark gần nhất:
-- JSON: [benchmark_single_rag_20260627_091510.json](benchmarks/results/benchmark_single_rag_20260627_091510.json)
-- Markdown: [benchmark_single_rag_20260627_091510.md](benchmarks/results/benchmark_single_rag_20260627_091510.md)
-- Academic write-up: [BENCHMARK_ANALYSIS.md](docs/BENCHMARK_ANALYSIS.md)
+Kết quả dưới đây được lấy trực tiếp từ các đợt benchmark gần nhất để so sánh giữa 3 kiến trúc:
+1. **Single-Agent (No RAG)**: Bản gốc chạy trên tri thức tĩnh của LLM (không có Database grounding).
+   - [benchmark_full_20260617_063715.json](benchmarks/results/benchmark_full_20260617_063715.json)
+2. **Single-Agent (RAG)**: Bản Single-Agent được tích hợp công cụ `retrieve_places` để truy xuất DB.
+   - [benchmark_single_rag_20260627_091510.json](benchmarks/results/benchmark_single_rag_20260627_091510.json)
+3. **Multi-Agent (LangGraph)**: Hệ thống SALLMA chia các Agent Workflow, Research, Planner và Budget Node.
+   - [benchmark_single_rag_20260627_091510.json](benchmarks/results/benchmark_single_rag_20260627_091510.json) (Phần Multi-Agent)
 
-Thiết lập chạy:
+Báo cáo phân tích học thuật chi tiết: [BENCHMARK_ANALYSIS.md](docs/BENCHMARK_ANALYSIS.md)
+
+Thiết lập chung:
 - `30` create prompts
 - `2` multi-turn sessions, mỗi session `10` turns
 - latency suite với `5` concurrent simulated rooms
@@ -26,45 +31,45 @@ Thiết lập chạy:
 
 ### Tóm tắt so sánh
 
-| Criterion | Single-Agent (RAG) | Multi-Agent | How the number is produced |
-|---|---:|---:|---|
-| Correctness | `98.55%` verified rate | `100.00%` verified rate | Kết quả này là **macro-average trên 30 cases**. Single-agent (RAG) có `228` địa điểm verified trên `231` địa điểm sinh ra tổng cộng; multi-agent có `435/435`. Tuy nhiên số công bố `98.55%` và `100.00%` được tính theo `mean(case_verified_rate)` chứ không phải gộp toàn bộ địa điểm rồi chia một lần. |
-| Hallucination | `1.45%` | `0.00%` | Cũng là **macro-average trên 30 cases** với công thức `hallucination_rate = 1 - verified_rate`. Tính theo tổng raw counts thì single-agent (RAG) có `3/231` địa điểm không verify được, còn multi-agent là `0/435`. |
-| Budget accuracy | `204,000 VND` average delta | `0 VND` average delta | Benchmark tính `budget_delta = abs(claimed_total_cost - recomputed_total_cost)` cho từng case, rồi lấy trung bình trên `30` cases. Tổng sai số raw của single-agent (RAG) là `6,120,000 VND`, chia `30` ra `204,000 VND`; multi-agent có tổng sai số `0 VND`. |
-| Consistency (create cases) | `0.23` violations/case | `4.6` violations/case | Bộ kiểm tra consistency đếm các lỗi như `nights_mismatch`, `time_order`, `missing_coordinates`, `duplicate_activity`, `route_distance`. Single-agent (RAG) có tổng `7` violations trên `30` create cases nên trung bình `0.23`; multi-agent có `138/30 = 4.6`. |
-| State retention | `100%` pass rate | `100%` pass rate | Có `2` session, mỗi session có `5` checks, nên tổng là `10/10` checks passed cho cả hai hệ. Công thức là `state_retention_pass_rate = passed_checks / total_checks`. |
-| Consistency (10-turn sessions) | `1.0` violations/session | `7.0` violations/session | Sau khi hoàn tất `2` session nhiều lượt, benchmark chạy lại consistency checker trên state cuối cùng. Single-agent (RAG) có tổng `2` violations trên `2` session nên ra `1.0`; multi-agent có `14/2 = 7.0`. |
-| Latency - Create | `44.285s` | `95.627s` | Đây là trung bình của `10` samples trong latency suite dưới `5` concurrent simulated rooms. Tổng thời gian cộng dồn xấp xỉ là `442.85s` cho single-agent (RAG) và `956.27s` cho multi-agent. |
-| Latency - Refine | `43.882s` | `54.740s` | Trung bình của `10` samples. Tổng thời gian cộng dồn xấp xỉ là `438.82s` cho single-agent (RAG) và `547.40s` cho multi-agent. |
-| Latency - Budget | `20.079s` | `0.000s` | Trung bình của `10` samples. Tổng thời gian cộng dồn xấp xỉ là `200.79s` cho single-agent (RAG); multi-agent dùng `Budget Node` Python thuần nên gần như `0s` trên mọi sample. |
-| User-perceived usefulness (proxy) | `4.76/5` | `3.65/5` | Đây là **automated proxy**, không phải questionnaire thật. Single-agent (RAG) có tổng điểm raw `142.8` trên `30` cases nên trung bình `4.76`; multi-agent có `109.5/30 = 3.65`. |
+| Tiêu chí | Single-Agent (No RAG) | Single-Agent (RAG) | Multi-Agent | Cách số liệu được tính toán |
+|---|---:|---:|---:|---|
+| **Correctness** (Đo độ xác thực địa danh) | `43.73%` | `98.55%` | `100.00%` | **Macro-average trên 30 cases**. Số địa danh thô khớp DB thực tế: No RAG: `109/249`, RAG: `228/231`, Multi-Agent: `435/435`. |
+| **Hallucination** (Tỷ lệ địa danh ảo giác) | `56.27%` | `1.45%` | `0.00%` | Tính bằng `1 - verified_rate`. Số địa danh ảo giác thô: No RAG: `140/249`, RAG: `3/231`, Multi-Agent: `0/435`. |
+| **Budget accuracy** (Lệch ngân sách trung bình) | `531,333 VND` | `204,000 VND` | `0 VND` | Trung bình của `budget_delta` trên 30 cases. Tổng sai số thô: No RAG: `15.94M VND`, RAG: `6.12M VND`, Multi-Agent: `0 VND` (do dùng Budget Node logic). |
+| **Consistency** (Lỗi logic trong Create) | `0.20` lỗi/case | `0.23` lỗi/case | `4.60` lỗi/case | Bộ kiểm tra tự động đếm các lỗi logic cấu trúc (ví dụ: ngày/đêm không khớp, trùng địa điểm, di chuyển quá xa). Multi-Agent bị phạt nhiều hơn do sinh kế hoạch đầy đủ, chi tiết hơn. |
+| **State retention** (Giữ trạng thái hội thoại) | `100%` pass | `100%` pass | `100%` pass | Pass rate trên 10 bài kiểm tra ở 2 session hội thoại 10 lượt. |
+| **Consistency** (Lỗi logic trong 10-turn) | `0.5` lỗi/session | `1.0` lỗi/session | `7.0` lỗi/session | Bộ kiểm tra chạy trên trạng thái cuối cùng của 2 session nhiều lượt. |
+| **Latency - Create** (Thời gian tạo) | `19.81s` | `44.29s` | `95.63s` | Trung bình `10` mẫu trong suite tải đồng thời. Tổng thời gian: No RAG: `198s`, RAG: `443s`, Multi-Agent: `956s`. |
+| **Latency - Refine** (Thời gian chỉnh sửa) | `18.63s` | `43.88s` | `54.74s` | Trung bình `10` mẫu. Tổng thời gian: No RAG: `186s`, RAG: `439s`, Multi-Agent: `547s`. |
+| **Latency - Budget** (Thời gian dự toán) | `19.57s` | `20.08s` | `0.00s` | Trung bình `10` mẫu. Multi-Agent dùng Python thuần nên gần như `0s`. |
+| **Usefulness proxy** (Điểm hữu ích ước lượng) | `4.17/5` | `4.76/5` | `3.65/5` | Điểm tự động dựa trên độ chính xác và tính nhất quán (chưa phải khảo sát người dùng thực). |
 
 ### Diễn giải theo 6 tiêu chí đánh giá
 
-1. **Correctness**
-   Benchmark đã phủ tiêu chí này trực tiếp. Con số `98.55%` và `100.00%` là **trung bình theo từng case** của tỷ lệ địa điểm được đối chiếu thành công với knowledge base thật trong database. Raw counts tương ứng là `228/231` địa điểm cho single-agent (RAG) và `435/435` cho multi-agent. Nhờ có RAG, Single-Agent đã cải thiện vượt bậc tỷ lệ chính xác từ mức dưới `45%` ở phiên bản không có RAG lên đến `98.55%`, tiệm cận mức hoàn hảo `100%` của Multi-Agent.
+1. **Correctness & Hallucination**
+   * **No RAG**: Single-Agent không có cơ sở dữ liệu làm mốc tham chiếu sẽ ảo giác liên tục, đặt các địa danh không có thật lên tới `56.27%`.
+   * **RAG**: Khi được tích hợp RAG, Single-Agent cải thiện ngoạn mục độ chính xác lên `98.55%` (228/231 địa điểm chuẩn).
+   * **Multi-Agent**: Đạt độ chính xác tuyệt đối `100%` nhờ sự kiểm soát gắt gao của Research Agent trong LangGraph, cam kết không bịa địa danh.
 
 2. **Budget accuracy**
-   Benchmark đã phủ trực tiếp. Single-agent (RAG) có tổng sai số `6,120,000 VND` trên `30` cases nên lệch trung bình `204,000 VND` (đã giảm đáng kể so với mức lệch hơn `500,000 VND` khi không có RAG), còn multi-agent lệch `0 VND` vì tổng chi phí cuối được tính bởi `Budget Node` deterministic thay vì để LLM tự cộng.
+   * **No RAG** bị lệch nhiều nhất do LLM làm toán nhầm lẫn.
+   * **RAG** giúp Single-Agent lấy được giá phòng và giá vé chuẩn từ DB nên sai số giảm hơn 2.5 lần xuống `204,000 VND`.
+   * **Multi-Agent** đạt sai số `0 VND` nhờ chuyển hẳn nhiệm vụ tính toán ngân sách từ LLM sang chương trình Python thuần túy (`Budget Node`).
 
 3. **Consistency**
-   Benchmark đã phủ bằng một bộ luật kiểm tra tự động. Bộ đo hiện tại xem contradiction là các lỗi cấu trúc và logic giữa itinerary, route, hotel và budget metadata. Ở create benchmark, raw totals là `7` violations cho single-agent (RAG) và `138` cho multi-agent. Lý do Multi-Agent bị nhiều lỗi hơn là do hệ thống Multi-Agent tạo ra các lịch trình phức tạp và đầy đủ thông tin địa điểm chi tiết hơn, dẫn đến tăng xác suất dính các lỗi phạt tự động (ví dụ: khoảng cách giữa các điểm vui chơi quá 35km).
+   * Cả hai bản Single-Agent (có và không có RAG) đều có số lỗi rất ít (`0.2` - `0.23` lỗi/case) do chúng có xu hướng tạo ra lịch trình ngắn gọn, ít hoạt động phụ.
+   * Multi-Agent bị phạt nhiều lỗi hơn (`4.6` lỗi/case) do LangGraph sinh ra lịch trình dày đặc, chi tiết (4-6 hoạt động đầy đủ mỗi ngày theo đúng chuẩn), dẫn đến khả năng xuất hiện các lỗi cấu trúc tự động (ví dụ: khoảng cách từ hoạt động tới khách sạn >35km) tăng cao.
 
-4. **State retention**
-   Benchmark đã phủ bằng `2` hội thoại nhiều lượt, mỗi hội thoại `10` turns. Cả hai hệ đều đạt `10/10` checks passed, tương đương `100%` pass rate trong bộ kiểm tra giữ trạng thái.
+4. **Latency**
+   * **No RAG** nhanh nhất do không tốn thời gian truy vấn DB hay định tuyến.
+   * **RAG** làm Single-Agent chậm đi gấp đôi (tăng lên ~44s) vì phải thực hiện các vòng lặp gọi tool truy xuất Postgres.
+   * **Multi-Agent** chậm nhất (~95s cho Create) vì chạy qua chuỗi LangGraph gồm 3 Agent LLM tuần tự cùng nhiều lượt gọi tool DB.
 
-5. **Latency**
-   Benchmark đã phủ trực tiếp bằng latency suite chạy đồng thời `5` group rooms mô phỏng, tách riêng `Create`, `Refine`, `Budget`. Mỗi workflow có `10` samples. Khi tích hợp thêm RAG, Single-Agent (RAG) phải tốn thêm thời gian gọi cơ sở dữ liệu nên thời gian phản hồi tăng lên mức `44.285s` (Create) và `43.882s` (Refine). Tuy nhiên, nó vẫn nhanh hơn đáng kể so với Multi-Agent (`95.627s` cho Create) do không phải chạy qua chuỗi LangGraph tuần tự.
+### Kết luận tổng quan
 
-6. **User-perceived usefulness**
-   Benchmark mới chỉ phủ một phần. Giá trị `4.76/5` và `3.65/5` hiện là **proxy tự động**, chưa phải khảo sát Likert thật từ người dùng. Việc Single-Agent (RAG) có điểm proxy cao hơn là do hệ thống này có ít lỗi consistency hơn trong các bài kiểm tra tự động.
-
-### Kết luận ngắn
-
-Benchmark cho thấy khi cả hai hệ thống đều sử dụng RAG:
-- Cả **Single-Agent (RAG)** và **Multi-Agent** đều đạt độ chính xác địa danh cực kỳ cao (tiệm cận và đạt `100%`). Việc ảo giác địa danh gần như đã được giải quyết triệt để nhờ cơ chế RAG.
-- **Multi-Agent** vẫn vượt trội tuyệt đối về tính chính xác của hóa đơn (`Budget accuracy` đạt sai số `0 VND` nhờ Budget Node deterministic).
-- **Single-Agent (RAG)** có lợi thế rất lớn về mặt tốc độ phản hồi (nhanh hơn khoảng gấp đôi so với Multi-Agent) và cấu trúc đơn giản hơn, đồng thời ghi nhận ít lỗi consistency tự động hơn.
+* **Single-Agent (No RAG)**: Chạy nhanh nhất nhưng không thể dùng trong thực tế do tỷ lệ ảo giác địa danh quá lớn (56.27%) và tính toán sai ngân sách.
+* **Single-Agent (RAG)**: Là sự dung hòa xuất sắc giữa hiệu năng và độ chính xác. Nhờ RAG, hệ thống loại bỏ ảo giác, giữ được tốc độ phản hồi nhanh hơn gấp đôi so với Multi-Agent mà vẫn đảm bảo độ tin cậy của thông tin đạt 98.55%.
+* **Multi-Agent**: Đạt độ hoàn thiện cao nhất về mặt nội dung (100% địa danh chính xác, 0 VND sai lệch ngân sách) nhưng đánh đổi bằng tài nguyên và độ trễ phản hồi (latency) rất cao.
 
 ## Cài đặt và Chạy thử nghiệm
 
@@ -125,7 +130,7 @@ travel_planner/
 ├── docs/                       # Tài liệu thiết kế kiến trúc
 ├── .env                        # Biến môi trường (không commit)
 ├── .gitignore                  # Bỏ qua các file không cần thiết
-└── requirements.txt            # Danh sách thư viện phụ thuộc
+├── requirements.txt            # Danh sách thư viện phụ thuộc
 ```
 
 ## Giấy phép
