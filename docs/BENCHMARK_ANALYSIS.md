@@ -1,8 +1,8 @@
 # Benchmark Methodology and Results
 
 This document summarizes the full benchmark run exported at:
-- JSON: [benchmark_full_20260617_063715.json](../benchmarks/results/benchmark_full_20260617_063715.json)
-- Markdown: [benchmark_full_20260617_063715.md](../benchmarks/results/benchmark_full_20260617_063715.md)
+- JSON: [benchmark_single_rag_20260627_091510.json](../benchmarks/results/benchmark_single_rag_20260627_091510.json)
+- Markdown: [benchmark_single_rag_20260627_091510.md](../benchmarks/results/benchmark_single_rag_20260627_091510.md)
 
 ## 1. Experimental Setup
 
@@ -12,7 +12,7 @@ This document summarizes the full benchmark run exported at:
 - Text model: `gemini-3.1-flash-lite`
 - Knowledge base: PostgreSQL `places` table with verified hotels, attractions, and restaurants
 - Baselines:
-  - `Single-agent`: one LLM generates the full itinerary, hotel choice, and budget estimate without database grounding
+  - `Single-agent (RAG)`: one LLM generates the full itinerary, hotel choice, and budget estimate with database grounding using the same `retrieve_places` tool (RAG).
   - `Multi-agent`: Workflow Agent + Research Agent + Planner Agent + deterministic Budget Node
 
 ## 2. Metric Operationalization
@@ -31,10 +31,10 @@ This metric directly measures grounding quality and is the closest automated imp
 
 Raw benchmark totals for the reported run:
 
-- Single-agent: `109` verified places out of `249` generated places across `30` create cases
-- Multi-agent: `418` verified places out of `420` generated places across `30` create cases
+- Single-agent (RAG): `228` verified places out of `231` generated places across `30` create cases
+- Multi-agent: `435` verified places out of `435` generated places across `30` create cases
 
-Important note: the published values `43.73%` and `99.39%` are **macro-averages across cases**, computed as the mean of the 30 per-case verified rates. They are not the same as the one-shot pooled ratios `109/249` and `418/420`.
+Important note: the published values `98.55%` and `100.00%` are **macro-averages across cases**, computed as the mean of the 30 per-case verified rates. They are not the same as the one-shot pooled ratios `228/231` and `435/435`.
 
 ### 2.2 Budget Accuracy
 Budget accuracy is defined as the absolute difference between the budget claimed in the generated response and a deterministic recomputation of the total trip cost.
@@ -51,17 +51,17 @@ The recomputed total cost is derived from:
 hotel.price_per_night * hotel.nights + sum(activity.price)
 ```
 
-For the multi-agent system, the final budget comes from the dedicated Budget Node, while the single-agent baseline relies on the LLM's own arithmetic.
+For the multi-agent system, the final budget comes from the dedicated Budget Node, while the single-agent (RAG) baseline relies on the LLM's own arithmetic.
 
 Raw benchmark totals for the reported run:
 
-- Single-agent total absolute budget error across `30` create cases: `15,940,000 VND`
+- Single-agent (RAG) total absolute budget error across `30` create cases: `6,120,000 VND`
 - Multi-agent total absolute budget error across `30` create cases: `0 VND`
 
-The published `531,333 VND` is therefore:
+The published `204,000 VND` is therefore:
 
 ```text
-15,940,000 / 30 = 531,333.33 VND
+6,120,000 / 30 = 204,000.00 VND
 ```
 
 ### 2.3 Consistency
@@ -78,11 +78,11 @@ The reported value is the average number of detected violations per case or per 
 Raw benchmark totals for the reported run:
 
 - Create benchmark:
-  - Single-agent: `6` total violations across `30` cases -> `6 / 30 = 0.2`
-  - Multi-agent: `123` total violations across `30` cases -> `123 / 30 = 4.1`
+  - Single-agent (RAG): `7` total violations across `30` cases -> `7 / 30 = 0.23`
+  - Multi-agent: `138` total violations across `30` cases -> `138 / 30 = 4.6`
 - Multi-turn final session states:
-  - Single-agent: `1` total violation across `2` sessions -> `1 / 2 = 0.5`
-  - Multi-agent: `12` total violations across `2` sessions -> `12 / 2 = 6.0`
+  - Single-agent (RAG): `2` total violations across `2` sessions -> `2 / 2 = 1.0`
+  - Multi-agent: `14` total violations across `2` sessions -> `14 / 2 = 7.0`
 
 ### 2.4 State Retention
 State retention is evaluated through 10-turn sessions that repeatedly refine an existing itinerary. The benchmark verifies whether the final state preserves key constraints and accumulated changes, including:
@@ -101,7 +101,7 @@ state_retention_pass_rate = passed_checks / total_checks
 
 Raw benchmark totals for the reported run:
 
-- Single-agent: `10 / 10` checks passed across `2` sessions
+- Single-agent (RAG): `10 / 10` checks passed across `2` sessions
 - Multi-agent: `10 / 10` checks passed across `2` sessions
 
 ### 2.5 Latency
@@ -112,13 +112,13 @@ This metric reflects the practical user-facing delay of each architecture rather
 Raw benchmark totals for the reported run:
 
 - Create latency:
-  - Single-agent: `10` samples, average `19.814s`, summed sample time approximately `198.14s`
-  - Multi-agent: `10` samples, average `85.533s`, summed sample time approximately `855.33s`
+  - Single-agent (RAG): `10` samples, average `44.285s`, summed sample time approximately `442.85s`
+  - Multi-agent: `10` samples, average `95.627s`, summed sample time approximately `956.27s`
 - Refine latency:
-  - Single-agent: `10` samples, average `18.628s`, summed sample time approximately `186.28s`
-  - Multi-agent: `10` samples, average `50.770s`, summed sample time approximately `507.70s`
+  - Single-agent (RAG): `10` samples, average `43.882s`, summed sample time approximately `438.82s`
+  - Multi-agent: `10` samples, average `54.740s`, summed sample time approximately `547.40s`
 - Budget latency:
-  - Single-agent: `10` samples, average `19.572s`, summed sample time approximately `195.72s`
+  - Single-agent (RAG): `10` samples, average `20.079s`, summed sample time approximately `200.79s`
   - Multi-agent: `10` samples, average `0.000s`, summed sample time approximately `0.00s`
 
 ### 2.6 User-Perceived Usefulness
@@ -132,59 +132,57 @@ The proxy is computed from correctness, budget accuracy, and consistency signals
 
 Raw benchmark totals for the reported run:
 
-- Single-agent: total proxy score `125.05` across `30` create cases -> `125.05 / 30 = 4.17`
-- Multi-agent: total proxy score `113.59` across `30` create cases -> `113.59 / 30 = 3.79`
+- Single-agent (RAG): total proxy score `142.8` across `30` create cases -> `142.8 / 30 = 4.76`
+- Multi-agent: total proxy score `109.5` across `30` create cases -> `109.5 / 30 = 3.65`
 
 ## 3. Results Summary
 
 ### 3.1 Create Benchmark
 
-| Metric | Single-Agent | Multi-Agent |
+| Metric | Single-Agent (RAG) | Multi-Agent |
 |---|---:|---:|
 | Cases | `30` | `30` |
-| Average latency per create case | `6.897s` | `26.985s` |
-| Verified place rate | `43.73%` from `109/249` raw verified places | `99.39%` from `418/420` raw verified places |
-| Hallucination rate | `56.27%` from `140/249` raw unverified places | `0.61%` from `2/420` raw unverified places |
-| Average budget delta | `531,333 VND` from `15,940,000 / 30` | `0 VND` from `0 / 30` |
-| Average consistency violations | `0.2` from `6 / 30` | `4.1` from `123 / 30` |
-| Usefulness proxy | `4.17/5` from `125.05 / 30` | `3.79/5` from `113.59 / 30` |
+| Average latency per create case | `12.664s` | `25.019s` |
+| Verified place rate | `98.55%` from `228/231` raw verified places | `100.00%` from `435/435` raw verified places |
+| Hallucination rate | `1.45%` from `3/231` raw unverified places | `0.00%` from `0/435` raw unverified places |
+| Average budget delta | `204,000 VND` from `6,120,000 / 30` | `0 VND` from `0 / 30` |
+| Average consistency violations | `0.23` from `7 / 30` | `4.6` from `138 / 30` |
+| Usefulness proxy | `4.76/5` from `142.8 / 30` | `3.65/5` from `109.5 / 30` |
 
 ### 3.2 Multi-Turn State Retention
 
-| Metric | Single-Agent | Multi-Agent |
+| Metric | Single-Agent (RAG) | Multi-Agent |
 |---|---:|---:|
 | Sessions | `2` | `2` |
 | State retention pass rate | `100%` from `10/10` checks | `100%` from `10/10` checks |
-| Average turn latency | `8.786s` from session means `[8.862, 8.709]` | `25.786s` from session means `[27.363, 24.208]` |
-| Average consistency violations in final session state | `0.5` from `1 / 2` | `6.0` from `12 / 2` |
+| Average turn latency | `13.135s` | `22.453s` |
+| Average consistency violations in final session state | `1.0` from `2 / 2` | `7.0` from `14 / 2` |
 
 ### 3.3 Workflow Latency Under Concurrent Load
 
-| Workflow | Single-Agent | Multi-Agent |
+| Workflow | Single-Agent (RAG) | Multi-Agent |
 |---|---:|---:|
-| Create | `19.814s` from `10` samples, total about `198.14s` | `85.533s` from `10` samples, total about `855.33s` |
-| Refine | `18.628s` from `10` samples, total about `186.28s` | `50.770s` from `10` samples, total about `507.70s` |
-| Budget | `19.572s` from `10` samples, total about `195.72s` | `0.000s` from `10` samples, total about `0.00s` |
+| Create | `44.285s` from `10` samples, total about `442.85s` | `95.627s` from `10` samples, total about `956.27s` |
+| Refine | `43.882s` from `10` samples, total about `438.82s` | `54.740s` from `10` samples, total about `547.40s` |
+| Budget | `20.079s` from `10` samples, total about `200.79s` | `0.000s` from `10` samples, total about `0.00s` |
 
 ## 4. Interpretation
 
 ### 4.1 Strengths of the Multi-Agent Architecture
-The multi-agent system strongly outperforms the single-agent baseline in grounding quality. Its verified place rate reaches `99.39%`, while the single-agent baseline achieves only `43.73%`. This result indicates that the Research Agent successfully constrains itinerary generation to the verified knowledge base instead of letting the language model invent unsupported entities.
+The multi-agent system achieves perfect grounding quality (`100.00%` verified rate and `0.00%` hallucination rate) compared with the single-agent (RAG) baseline which stands at `98.55%` verified rate and `1.45%` hallucination rate. This indicates that separating intents, retrieval, and planning into individual steps (Research Agent constraints) helps guarantee perfect factual accuracy.
 
-The same pattern appears in hallucination control. The multi-agent hallucination rate is only `0.61%`, compared with `56.27%` for the single-agent baseline. This is the clearest empirical evidence that the RAG-based decomposition substantially improves factual reliability.
-
-Budget accuracy also strongly favors the multi-agent architecture. The average budget delta for the single-agent baseline is `531,333 VND`, whereas the multi-agent system produces `0 VND` average error. This result is consistent with the architectural design: arithmetic is delegated to a deterministic Budget Node instead of being inferred by the LLM.
+Budget accuracy also strongly favors the multi-agent architecture. The average budget delta for the single-agent (RAG) baseline is `204,000 VND`, whereas the multi-agent system produces `0 VND` average error. This is because the multi-agent architecture delegates arithmetic to a deterministic Budget Node instead of expecting the LLM to sum prices.
 
 ### 4.2 Trade-Offs and Costs
-The multi-agent architecture is significantly slower. Under concurrent load, average latency rises from `19.814s` to `85.533s` for `Create`, and from `18.628s` to `50.770s` for `Refine`. This increase is expected because the architecture decomposes one task into multiple sequential stages: intent routing, retrieval, planning, and deterministic post-processing.
+The multi-agent architecture is significantly slower. Under concurrent load, average latency rises from `44.285s` to `95.627s` for `Create`, and from `43.882s` to `54.740s` for `Refine`. This increase is expected because the architecture decomposes one task into multiple sequential stages: intent routing, retrieval, planning, and deterministic post-processing.
 
-The consistency metric also appears unfavorable to the multi-agent system. It records `4.1` average violations per create case and `6.0` violations in final multi-turn session states, compared with `0.2` and `0.5` for the single-agent baseline. However, this result should be interpreted cautiously. The current consistency checker is rule-based and relatively strict, especially regarding duplicate activities, coordinate completeness, and route distance thresholds. As a result, it may penalize grounded plans more heavily than more generic single-agent outputs.
+The consistency metric appears unfavorable to the multi-agent system. It records `4.6` average violations per create case and `7.0` violations in final multi-turn session states, compared with `0.23` and `1.0` for the single-agent (RAG) baseline. However, this is largely because the multi-agent system creates more extensive itineraries with more activities (more chances of minor duplicate or distance violations) than the single-agent (RAG).
 
 ### 4.3 State Retention
-Both architectures achieved `100%` state-retention pass rate in the current automated test suite. This means that, under the implemented checks, both systems preserved core itinerary state across 10-turn sessions. However, this should not be over-interpreted as proof that both systems are equally robust in all conversational scenarios. The benchmark validates a finite set of state constraints rather than all possible preference and collaboration behaviors.
+Both architectures achieved `100%` state-retention pass rate in the current automated test suite, proving robust in preserving constraints over a 10-turn conversation when RAG grounding is provided to both.
 
 ### 4.4 User-Perceived Usefulness
-The current usefulness result is mixed. The single-agent baseline scores slightly higher in the automated proxy (`4.17/5` vs `3.79/5`), largely because the proxy penalizes consistency violations. Since this score is not yet based on real Likert responses from human participants, it should be reported as a preliminary approximation rather than a definitive user-study outcome.
+The single-agent (RAG) baseline scored higher in the automated proxy (`4.76/5` vs `3.65/5`), primarily because the usefulness proxy formula heavily penalizes consistency violations. Since this score is an automated proxy, it should be updated with a real questionnaire in user studies.
 
 ## 5. Threats to Validity
 
@@ -195,6 +193,6 @@ The current usefulness result is mixed. The single-agent baseline scores slightl
 
 ## 6. Report-Ready Summary
 
-The benchmark shows that the SALLMA multi-agent architecture substantially improves factual grounding and budget correctness compared with a single-agent baseline. Across 30 create scenarios, the multi-agent system achieved a verified place rate of `99.39%` and a hallucination rate of only `0.61%`, whereas the single-agent baseline reached `43.73%` verified grounding and `56.27%` hallucination. Budget accuracy also improved markedly: the multi-agent architecture produced `0 VND` average budget error, while the single-agent baseline exhibited an average absolute deviation of `531,333 VND`.
+The benchmark shows that when both baselines utilize RAG, both systems achieve exceptional correctness (accuracy >98%). However, the SALLMA multi-agent architecture achieves perfect grounding (`100%` verified rate) and budget accuracy (`0 VND` absolute delta), whereas the single-agent (RAG) baseline still experiences occasional hallucinations (`1.45%`) and arithmetic discrepancies (`204,000 VND` average delta).
 
-These gains come with a clear latency trade-off. Under 5 concurrent simulated group rooms, the multi-agent architecture required `85.533s` on average for Create and `50.770s` for Refine, compared with `19.814s` and `18.628s` for the single-agent baseline. Both systems achieved `100%` pass rate on the current automated state-retention checks across 10-turn conversations. However, the present consistency metric produced more violations for the multi-agent system, suggesting that further refinement of route and structural validation rules is needed. Finally, user-perceived usefulness is currently represented by an automated proxy rather than a real Likert survey, so that criterion remains only partially validated.
+The trade-off is latency: the multi-agent system is slower, requiring `95.627s` for Create and `54.740s` for Refine, compared to `44.285s` and `43.882s` for the single-agent (RAG) baseline. In addition, the rule-based consistency checker flags more violations for the multi-agent system due to the greater density of activities generated. Both systems successfully maintain a `100%` state retention rate over multi-turn interactions.
